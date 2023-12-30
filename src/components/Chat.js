@@ -1,15 +1,18 @@
+// Chat.js
+
 import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 import "./Chat.css";
 import { signInWithPopup } from "firebase/auth";
 import { auth, provider } from "./signin/Config.js";
 
-const socket = io("http://localhost:5000"); // Replace with your server URL
+const socket = io("http://localhost:5000");
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  const [connectedUser, setConnectedUser] = useState(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -18,12 +21,19 @@ const Chat = () => {
         socket.on("get-message", (message) => {
           setMessages((prevMessages) => [...prevMessages, message]);
         });
+
+        // Handle the "connected-to-random-user" event
+        socket.on("connected-to-random-user", (randomUser) => {
+          console.log(`Connected to random user:`, randomUser);
+          setConnectedUser(randomUser);
+        });
       }
     });
 
     return () => {
       unsubscribe();
       socket.off("get-message");
+      socket.off("connected-to-random-user");
     };
   }, []);
 
@@ -74,6 +84,17 @@ const Chat = () => {
             )}
             <p>Welcome, {currentUser.displayName}!</p>
           </div>
+          {connectedUser ? (
+            <div>
+              <p>Connected to: {connectedUser.name}</p>
+            </div>
+          ) : (
+            <div>
+              <button onClick={() => socket.emit("connect-to-random-user")}>
+                Connect to Random User
+              </button>
+            </div>
+          )}
           <div className="showMessages">
             <div className="messageDiv">
               {messages.map((data, index) => (
@@ -122,3 +143,5 @@ const Chat = () => {
 };
 
 export default Chat;
+
+// This is the main code
